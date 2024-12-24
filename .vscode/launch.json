@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Launch RuleEngine API",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build",
+        "program": "/home/sharanphadke/Documents/POCs/TemporalRuleEngine/src/RuleEngine/bin/Debug/net8.0/RuleEngine.dll",
+        "args": [],
+        "cwd": "/home/sharanphadke/Documents/POCs/TemporalRuleEngine/src/RuleEngine",
+        "stopAtEntry": false,
+        "env": {
+          "ASPNETCORE_ENVIRONMENT": "Development"
+        },
+        "sourceFileMap": {
+          "/Views": "${workspaceFolder}/Views"
+        }
+      },
+      {
+        "name": "Launch Worker API",
+        "type": "coreclr",
+        "request": "launch",
+        "preLaunchTask": "build",
+        "program": "/home/sharanphadke/Documents/POCs/TemporalRuleEngine/src/RuleEngine/bin/Debug/net8.0/Worker.dll",
+        "args": [],
+        "cwd": "/home/sharanphadke/Documents/POCs/TemporalRuleEngine/src/Worker",
+        "stopAtEntry": false,
+        "env": {
+          "ASPNETCORE_ENVIRONMENT": "Development"
+        },
+        "sourceFileMap": {
+          "/Views": "${workspaceFolder}/Views"
+        }
+      },
+    ]
+  }
+  

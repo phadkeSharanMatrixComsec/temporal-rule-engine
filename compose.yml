@@ -1,0 +1,71 @@
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017" # Map MongoDB default port
+    volumes:
+      - mongodb_data:/data/db # Persist MongoDB data
+    restart: unless-stopped
+    networks:
+      - rule-engine-network
+
+  postgresql:
+    environment:
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_USER: temporal
+    image: postgres:${POSTGRESQL_VERSION}
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rule-engine-network
+
+  temporal:
+    depends_on:
+      - postgresql
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PWD=${POSTGRES_PASSWORD}
+      - POSTGRES_SEEDS=postgresql
+      - PROMETHEUS_ENDPOINT=0.0.0.0:8000
+    image: temporalio/auto-setup:${TEMPORAL_AUTOSETUP_VERSION}
+    ports:
+      - 7233:7233
+    networks:
+      - rule-engine-network
+
+  temporal-admin-tools:
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    image: temporalio/admin-tools:${TEMPORAL_AUTOSETUP_VERSION}
+    stdin_open: true
+    tty: true
+    networks:
+      - rule-engine-network
+
+  temporal-ui:
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CODEC_ENDPOINT=http://localhost:8081
+    image: temporalio/ui:${TEMPORAL_UI_VERSION}
+    ports:
+      - 8080:8080
+    networks:
+      - rule-engine-network
+
+networks:
+  rule-engine-network:
+    driver: bridge
+
+
+volumes:
+  postgres_data:
+  mongodb_data:
