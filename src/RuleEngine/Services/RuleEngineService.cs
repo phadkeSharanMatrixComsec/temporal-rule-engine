@@ -1,7 +1,6 @@
-using System.Data;
 using Temporalio.Client;
 using Temporalio.Common;
-using Temporalio.Workflows;
+using Worker.Common;
 using Worker.Models;
 using Worker.Workflows;
 
@@ -33,31 +32,34 @@ public class RuleEngineService
         var rawEvent = rule.Event;
         string workflow_id = $"rule-{rule.Name}-{Guid.NewGuid()}";
 
-        WorkflowHandle handle;
+        var handle = await _temporalClient.StartWorkflowAsync(
+            (EventWorkflow eventWorkflow) => eventWorkflow.StartWorkflow(rule.Actions),
+            new(id: workflow_id, taskQueue: "RULE_TASK_QUEUE")
+        );
 
-        switch (rawEvent)
-        {
-            case "CameraOfflineEvent":
-                handle = await _temporalClient.StartWorkflowAsync(
-                    (CameraOfflineEventWorkflow cameraOfflineEventWorkflow) => cameraOfflineEventWorkflow.StartWorkflow(rule.Actions),
-                    new(id: workflow_id, taskQueue: "RULE_TASK_QUEUE")
-                );
-                break;
-            case "RecordingStoppedEvent":
-                handle = await _temporalClient.StartWorkflowAsync(
-                    (RecordingStoppedEventWorkflow recordingStoppedEventWorkflow) => recordingStoppedEventWorkflow.StartWorkflow(rule.Actions),
-                    new(id: workflow_id, taskQueue: "RULE_TASK_QUEUE")
-                );
-                break;
-            case "MotionDetectedEvent":
-                handle = await _temporalClient.StartWorkflowAsync(
-                    (MotionDetectedEventWorkflow motionDetectedEventWorkflow) => motionDetectedEventWorkflow.StartWorkflow(rule.Actions),
-                    new(id: workflow_id, taskQueue: "RULE_TASK_QUEUE")
-                );
-                break;
-            default:
-                break;
-        }
+        // switch (rawEvent)
+        // {
+        //     case "CameraOfflineEvent":
+        //         handle = await _temporalClient.StartWorkflowAsync(
+        //             (CameraOfflineEventWorkflow cameraOfflineEventWorkflow) => cameraOfflineEventWorkflow.StartWorkflow(rule.Actions),
+        //             new(id: workflow_id, taskQueue: "RULE_TASK_QUEUE")
+        //         );
+        //         break;
+        //     case "RecordingStoppedEvent":
+        //         handle = await _temporalClient.StartWorkflowAsync(
+        //             (RecordingStoppedEventWorkflow recordingStoppedEventWorkflow) => recordingStoppedEventWorkflow.StartWorkflow(rule.Actions),
+        //             new(id: workflow_id, taskQueue: "RULE_TASK_QUEUE")
+        //         );
+        //         break;
+        //     case "MotionDetectedEvent":
+        //         handle = await _temporalClient.StartWorkflowAsync(
+        //             (MotionDetectedEventWorkflow motionDetectedEventWorkflow) => motionDetectedEventWorkflow.StartWorkflow(rule.Actions),
+        //             new(id: workflow_id, taskQueue: "RULE_TASK_QUEUE")
+        //         );
+        //         break;
+        //     default:
+        //         break;
+        // }
 
         var updatedModel = new RuleModel()
         {
@@ -75,6 +77,10 @@ public class RuleEngineService
     public async Task DeactivateRule(RuleModel ruleModel)
     {
         var workflowHandle = _temporalClient.GetWorkflowHandle(ruleModel.WorkflowId);
+        var broadcasterWorkflowId = TemporalConstants.EventBroadcasterWorkflowId;
+
+        var broadcastEventWorkflow = _temporalClient.GetWorkflowHandle(broadcasterWorkflowId);
+        await broadcastEventWorkflow.SignalAsync<EventBroadcasterWorkflow>(broadcastEventWorkflow => broadcastEventWorkflow.DeregisterWorkflow(ruleModel.WorkflowId));
 
         await workflowHandle.TerminateAsync();
     }

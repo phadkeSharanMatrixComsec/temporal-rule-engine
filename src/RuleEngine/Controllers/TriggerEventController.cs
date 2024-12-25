@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Temporalio.Client;
+using Worker.Common;
 using Worker.Models;
 using Worker.Workflows;
 
@@ -19,41 +19,40 @@ namespace RuleEngine.Controllers
             _mongoRepository = mongoRepository;
         }
 
-        [HttpGet("TriggerEvent/{ruleName}")]
-        public async Task<IActionResult> TriggerEvent(string ruleName)
+        [HttpGet("TriggerEvent/{eventName}")]
+        public async Task<IActionResult> TriggerEvent(string eventName)
         {
-            string cameraAddedEvent = "CameraOfflineEvent";
+            string broadcasterWorkflowId = TemporalConstants.EventBroadcasterWorkflowId;
 
-            var ruleModel = await _mongoRepository.GetByRuleName(ruleName);
-
-
-            var cameraAddedEventModel = new EventModel()
+            var eventModel = new EventModel()
             {
-                EventName = cameraAddedEvent,
+                EventName = eventName,
                 EventData = "camera1",
                 EventId = "1",
                 TenantId = "1"
             };
 
-            var workflowHandle = _temporalClient.GetWorkflowHandle(ruleModel.WorkflowId);
-            switch (ruleModel.Event)
-            {
-                case "CameraOfflineEvent":
-                    await workflowHandle.SignalAsync<CameraOfflineEventWorkflow>(wf => wf.CameraOfflineSignal(cameraAddedEventModel));
+            var workflowHandle = _temporalClient.GetWorkflowHandle(broadcasterWorkflowId);
 
-                    break;
-                case "RecordingStoppedEvent":
-                    await workflowHandle.SignalAsync<RecordingStoppedEventWorkflow>(wf => wf.RecordingStoppedSignal(cameraAddedEventModel));
+            await workflowHandle.SignalAsync<EventBroadcasterWorkflow>(broadcastEventWorkflow => broadcastEventWorkflow.BroadcastEvent(eventModel));
+            // switch (ruleModel.Event)
+            // {
+            //     case "CameraOfflineEvent":
+            //         await workflowHandle.SignalAsync<CameraOfflineEventWorkflow>(wf => wf.CameraOfflineSignal(cameraAddedEventModel));
 
-                    break;
-                case "MotionDetectedEvent":
-                    await workflowHandle.SignalAsync<MotionDetectedEventWorkflow>(wf => wf.MotionDetectedSignal(cameraAddedEventModel));
+            //         break;
+            //     case "RecordingStoppedEvent":
+            //         await workflowHandle.SignalAsync<RecordingStoppedEventWorkflow>(wf => wf.RecordingStoppedSignal(cameraAddedEventModel));
 
-                    break;
-                default:
-                    break;
+            //         break;
+            //     case "MotionDetectedEvent":
+            //         await workflowHandle.SignalAsync<MotionDetectedEventWorkflow>(wf => wf.MotionDetectedSignal(cameraAddedEventModel));
 
-            }
+            //         break;
+            //     default:
+            //         break;
+
+            // }
             return Ok();
 
         }

@@ -18,9 +18,8 @@ Console.CancelKeyPress += (_, eventArgs) =>
 using var worker = new TemporalWorker(
     client, // client
     new TemporalWorkerOptions(taskQueue: "RULE_TASK_QUEUE")
-        .AddWorkflow<CameraOfflineEventWorkflow>()
-        .AddWorkflow<MotionDetectedEventWorkflow>()
-        .AddWorkflow<RecordingStoppedEventWorkflow>()
+        .AddWorkflow<EventWorkflow>()
+        .AddWorkflow<EventBroadcasterWorkflow>()
         .AddAllActivities(new EmailActivities())
         .AddAllActivities(new LiveViewActivities())
         .AddAllActivities(new NotificationActivities())

@@ -1,7 +1,10 @@
 using MongoDB.Driver;
 using RuleEngine.Services;
+using Temporalio.Api.Enums.V1;
 using Temporalio.Client;
+using Worker.Common;
 using Worker.Models;
+using Worker.Workflows;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,7 +51,50 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Start the Event Broadcaster Workflow
+var temporalClient = app.Services.GetRequiredService<ITemporalClient>();
+var broadcasterWorkflowId = TemporalConstants.EventBroadcasterWorkflowId;
+
+await EnsureEventBroadcasterWorkflowStartedAsync(temporalClient, broadcasterWorkflowId);
+
 // app.UseHttpsRedirection();
 app.MapControllers();
 
 app.Run();
+
+
+
+static async Task EnsureEventBroadcasterWorkflowStartedAsync(ITemporalClient temporalClient, string workflowId)
+{
+    try
+    {
+        var workflowHandle = temporalClient.GetWorkflowHandle(workflowId);
+
+        // Check if the workflow is already running
+        try
+        {
+            var status = await workflowHandle.DescribeAsync();
+            if (status.Status == WorkflowExecutionStatus.Running)
+            {
+                Console.WriteLine("Event Broadcaster Workflow is already running.");
+                return;
+            }
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("Workflow not found. Starting a new one.");
+        }
+
+        // Start the workflow if not found or not running
+        var handle = await temporalClient.StartWorkflowAsync(
+            (EventBroadcasterWorkflow broadcasterWorkflow) => broadcasterWorkflow.StartAsync(),
+            new(id: workflowId, taskQueue: "RULE_TASK_QUEUE")
+        );
+
+        Console.WriteLine("Event Broadcaster Workflow started successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Failed to ensure workflow started: {ex.Message}");
+    }
+}
